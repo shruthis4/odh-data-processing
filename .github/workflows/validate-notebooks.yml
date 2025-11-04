@@ -33,7 +33,7 @@ jobs:
 
       - name: Install Testing Tools
         run: |
-          pip install pytest nbformat nbstripout
+          pip install pytest nbformat nbstripout ipython ipykernel jupyter-client
           ipython kernel install --name "python3" --user
 
       - name: Run Formatting Tests
