@@ -116,7 +116,6 @@ class ArcticEmbedEncoder:
             if not os.path.exists(model_path):
                 raise ValueError(
                     f"Model not found in available models: {self.cfg.model_name}\n"
-                    "Please run `ilab model download` and download the necessary model"
                 )
 
             self.tokenizer = AutoTokenizer.from_pretrained(model_path)
