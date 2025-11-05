@@ -1,4 +1,4 @@
-# GitHub Dependabot configuration (alternative: explicitly ignore major version bumps)
+# GitHub Dependabot configuration
 version: 2
 updates:
   - package-ecosystem: "github-actions"
@@ -8,16 +8,16 @@ updates:
       day: "saturday"
     commit-message:
       prefix: chore(github-deps)
+      
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
       interval: "weekly"
       day: "saturday"
     allow:
-      - dependency-type: "direct"
+      - dependency-type: "direct"         # Only direct dependencies
     ignore:
-      - dependency-type: "direct"
-        update-types:
-          - "version-update:semver-major"
+      - dependency-name: "*"              # All dependencies
+        update-types: ["version-update:semver-major"]  # Ignore major updates
     commit-message:
       prefix: chore(python-deps)
