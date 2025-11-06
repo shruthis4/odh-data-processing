@@ -1,22 +1,23 @@
 # GitHub Dependabot configuration
 version: 2
 updates:
-  # Enable version updates for GitHub Actions
   - package-ecosystem: "github-actions"
-    directory: "/" # Will use the default workflow location of `.github/workflows`
+    directory: "/"
     schedule:
       interval: "weekly"
       day: "saturday"
     commit-message:
       prefix: chore(github-deps)
-  # Python dependencies
+      
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
       interval: "weekly"
       day: "saturday"
     allow:
-      - dependency-type: "direct"         # Only direct deps, not sub-dependencies
-        update-types: ["patch", "minor"]  # Skip major breaking changes
+      - dependency-type: "direct"         # Only direct dependencies
+    ignore:
+      - dependency-name: "*"              # All dependencies
+        update-types: ["version-update:semver-major"]  # Ignore major updates
     commit-message:
       prefix: chore(python-deps)
