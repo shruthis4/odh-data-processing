@@ -46,12 +46,12 @@ The ODH Data Processing repository contains several distinct module types, each 
 
 | Repository Module | Testing Approach | Must-Have Test Cases | Nice-to-Have | Tools/Environment | Priority |
 |-------------------|-----------------|-----------|--------------|--------|----------|
-| **Jupyter Notebooks (Tutorials & Use Cases)** | Execution + Validation | Parameter cell validation ✅, Successful execution ❌ | Output validation, Performance benchmarks, Load testing with large datasets, Multi-environment testing | pytest, papermill, nbformat, AWS EC2 | HIGH |
-| **KFP Pipelines (Standard & VLM)** | Component + Integration | Unit tests for components ✅, Pipeline compilation ✅, Run pipeline with real cluster ❌ | Mock data execution, Performance profiling, Resource usage testing | pytest, kfp SDK, unittest.mock | MEDIUM |
+| **Jupyter Notebooks (Tutorials & Use Cases)** | Execution + Validation | Parameter cell validation ✅, Successful execution ❌ | Output validation, Performance benchmarks, Load testing with large datasets, Multi-environment testing, Vulnerability checks ❌  | pytest, papermill, nbformat, AWS EC2,snyk | HIGH |
+| **KFP Pipelines (Standard & VLM)** | Component + Integration | Unit tests for components ❌ , Pipeline compilation ✅, Run pipeline with real cluster ❌ | Mock data execution, Performance profiling, Resource usage testing | pytest, kfp SDK, unittest.mock | HIGH |
 | **Python Scripts - Subset Selection(TODO-talk to Ali)** | Unit + Integration | Function unit tests ❌, CLI interface testing ❌, File I/O validation ❌ | Performance benchmarks, Memory usage testing, Large dataset testing | pytest, pytest-mock, pytest-benchmark | HIGH |
-| **Custom Workbench Image** | Container Testing | Build success ❌, Base functionality ❌, Security scanning ❌ ,entry-point scritp validatin  ❌| Multi-arch builds, OpenShift AI integration | Docker, hadolint, trivy, pytest-docker | HIGH |
+| **Custom Workbench Image(may not need it anymore)** | Container Testing | Build success 🔄, Base functionality ❌, Security scanning ❌ ,entry-point scritp validation  ❌| Multi-arch builds, OpenShift AI integration | Docker, hadolint, trivy, pytest-docker | HIGH |
 | **Configuration Files** | Validation + Syntax | YAML/TOML syntax validation ✅, Schema compliance ✅, Reference validation ❌ | Automated updates, Drift detection, Impact analysis | yamllint, jsonschema, custom validators | LOW |
-| **Documentation** | Content + Link Validation | Link checking ❌, Code example execution ❌, Formatting validation ❌ | Accessibility testing, Translation validation, SEO optimization | markdown-link-check, pytest-doctests | LOW |
+| **Documentation** | Content + Link Validation | Link checking ❌, Code example execution ❌, Formatting validation ❌ | Accessibility testing, Translation validation | markdown-link-check, pytest-doctests | LOW |
 
 ---
 
@@ -96,16 +96,16 @@ show_missing = true
 **Must-Have Quality Gates:**
 - ✅ All notebooks execute successfully with default parameters
 - ✅ 70%+ code coverage for Python modules  
-- ✅ Zero critical security vulnerabilities in containers
+- ✅ Automated dependency vulnerability scanning
 - ✅ All KFP pipelines compile without errors
 - ✅ Pre-commit hooks pass (formatting, linting)
-- ✅ Documentation links are valid
+
 
 **Nice-to-Have Quality Gates:**
 - ⭐ 85%+ code coverage with branch coverage
 - ⭐ Performance benchmarks within acceptable ranges
 - ⭐ Cross-platform compatibility testing
-- ⭐ Automated dependency vulnerability scanning
+- ⭐ Documentation links are valid
 - ⭐ Integration testing with real ODH cluster
 - ⭐ Accessibility compliance for documentation
 
