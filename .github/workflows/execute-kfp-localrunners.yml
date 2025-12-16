@@ -1,0 +1,43 @@
+name: Test Local Pipeline Runners
+
+on:
+  pull_request:
+    paths:
+      - "kubeflow-pipelines/**"
+  push:
+    branches: [ main ]
+    paths:
+      - "kubeflow-pipelines/**"
+  workflow_dispatch:
+
+jobs:
+  test-local-pipelines:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        pipeline:
+          - docling-standard
+          - docling-vlm
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      
+      - name: Install minimal requirements
+        run: pip install docker kfp
+      
+      - name: Create output directory
+        working-directory: kubeflow-pipelines/${{ matrix.pipeline }}
+        run: |
+          mkdir -p local_outputs
+          chmod 777 local_outputs
+      
+      - name: Run local pipeline
+        working-directory: kubeflow-pipelines/${{ matrix.pipeline }}
+        run: python local_run.py
