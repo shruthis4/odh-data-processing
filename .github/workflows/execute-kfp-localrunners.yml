@@ -4,10 +4,12 @@ on:
   pull_request:
     paths:
       - "kubeflow-pipelines/**"
+      - ".github/workflows/execute-kfp-localrunners.yml"
   push:
     branches: [ main ]
     paths:
       - "kubeflow-pipelines/**"
+      - ".github/workflows/execute-kfp-localrunners.yml"
   workflow_dispatch:
     inputs:
       # Maintainers can provide a PR number or existing  branch name to run this
