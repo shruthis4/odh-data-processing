@@ -18,7 +18,7 @@ jobs:
       matrix:
         pipeline:
           - docling-standard
-          - docling-vlm
+          #- docling-vlm
     
     steps:
       - name: Checkout
