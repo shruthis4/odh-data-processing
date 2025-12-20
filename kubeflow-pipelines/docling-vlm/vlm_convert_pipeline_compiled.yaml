@@ -2,6 +2,9 @@
 # Name: data-processing-docling-vlm-pipeline
 # Description: Docling VLM convert pipeline by the Data Processing Team
 # Inputs:
+#    docling_chunk_enabled: bool [Default: False]
+#    docling_chunk_max_tokens: int [Default: 512.0]
+#    docling_chunk_merge_peers: bool [Default: True]
 #    docling_image_export_mode: str [Default: 'embedded']
 #    docling_num_threads: int [Default: 4.0]
 #    docling_remote_model_enabled: bool [Default: False]
@@ -11,6 +14,37 @@
 #    pdf_filenames: str [Default: '2203.01017v2.pdf']
 #    pdf_from_s3: bool [Default: False]
 components:
+  comp-condition-2:
+    dag:
+      tasks:
+        docling-chunk:
+          cachingOptions: {}
+          componentRef:
+            name: comp-docling-chunk
+          inputs:
+            artifacts:
+              input_path:
+                componentInputArtifact: pipelinechannel--docling-convert-vlm-output_path
+            parameters:
+              max_tokens:
+                componentInputParameter: pipelinechannel--docling_chunk_max_tokens
+              merge_peers:
+                componentInputParameter: pipelinechannel--docling_chunk_merge_peers
+          taskInfo:
+            name: docling-chunk
+    inputDefinitions:
+      artifacts:
+        pipelinechannel--docling-convert-vlm-output_path:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+      parameters:
+        pipelinechannel--docling_chunk_enabled:
+          parameterType: BOOLEAN
+        pipelinechannel--docling_chunk_max_tokens:
+          parameterType: NUMBER_INTEGER
+        pipelinechannel--docling_chunk_merge_peers:
+          parameterType: BOOLEAN
   comp-create-pdf-splits:
     executorLabel: exec-create-pdf-splits
     inputDefinitions:
@@ -28,6 +62,32 @@ components:
       parameters:
         Output:
           parameterType: LIST
+  comp-docling-chunk:
+    executorLabel: exec-docling-chunk
+    inputDefinitions:
+      artifacts:
+        input_path:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+          description: Path to the input directory containing Docling JSON files
+      parameters:
+        max_tokens:
+          defaultValue: 512.0
+          description: Maximum number of tokens per chunk
+          isOptional: true
+          parameterType: NUMBER_INTEGER
+        merge_peers:
+          defaultValue: true
+          description: Whether to merge smaller chunks at the same level
+          isOptional: true
+          parameterType: BOOLEAN
+    outputDefinitions:
+      artifacts:
+        output_path:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
   comp-docling-convert-vlm:
     executorLabel: exec-docling-convert-vlm
     inputDefinitions:
@@ -100,6 +160,29 @@ components:
   comp-for-loop-1:
     dag:
       tasks:
+        condition-2:
+          componentRef:
+            name: comp-condition-2
+          dependentTasks:
+          - docling-convert-vlm
+          inputs:
+            artifacts:
+              pipelinechannel--docling-convert-vlm-output_path:
+                taskOutputArtifact:
+                  outputArtifactKey: output_path
+                  producerTask: docling-convert-vlm
+            parameters:
+              pipelinechannel--docling_chunk_enabled:
+                componentInputParameter: pipelinechannel--docling_chunk_enabled
+              pipelinechannel--docling_chunk_max_tokens:
+                componentInputParameter: pipelinechannel--docling_chunk_max_tokens
+              pipelinechannel--docling_chunk_merge_peers:
+                componentInputParameter: pipelinechannel--docling_chunk_merge_peers
+          taskInfo:
+            name: condition-2
+          triggerPolicy:
+            condition: inputs.parameter_values['pipelinechannel--docling_chunk_enabled']
+              == true
         docling-convert-vlm:
           cachingOptions: {}
           componentRef:
@@ -141,6 +224,12 @@ components:
           parameterType: LIST
         pipelinechannel--create-pdf-splits-Output-loop-item:
           parameterType: LIST
+        pipelinechannel--docling_chunk_enabled:
+          parameterType: BOOLEAN
+        pipelinechannel--docling_chunk_max_tokens:
+          parameterType: NUMBER_INTEGER
+        pipelinechannel--docling_chunk_merge_peers:
+          parameterType: BOOLEAN
         pipelinechannel--docling_image_export_mode:
           parameterType: STRING
         pipelinechannel--docling_num_threads:
@@ -389,9 +478,9 @@ deploymentSpec:
           \n    if pipeline_type == \"standard\":\n        # Standard pipeline: download\
           \ traditional models\n        download_models(\n            output_dir=output_path_p,\n\
           \            progress=True,\n            with_layout=True,\n           \
-          \ with_tableformer=True,\n            with_easyocr=False,\n        )\n \
-          \   elif pipeline_type == \"vlm\" and remote_model_endpoint_enabled:\n \
-          \       # VLM pipeline with remote model endpoint: Download minimal required\
+          \ with_tableformer=True,\n            with_easyocr=True,\n        )\n  \
+          \  elif pipeline_type == \"vlm\" and remote_model_endpoint_enabled:\n  \
+          \      # VLM pipeline with remote model endpoint: Download minimal required\
           \ models\n        # Only models set are what lives in fabianofranz repo\n\
           \        # TODO: figure out what needs to be downloaded or removed\n   \
           \     download_models(\n            output_dir=output_path_p,\n        \
@@ -566,6 +655,12 @@ root:
               taskOutputParameter:
                 outputParameterKey: Output
                 producerTask: create-pdf-splits
+            pipelinechannel--docling_chunk_enabled:
+              componentInputParameter: docling_chunk_enabled
+            pipelinechannel--docling_chunk_max_tokens:
+              componentInputParameter: docling_chunk_max_tokens
+            pipelinechannel--docling_chunk_merge_peers:
+              componentInputParameter: docling_chunk_merge_peers
             pipelinechannel--docling_image_export_mode:
               componentInputParameter: docling_image_export_mode
             pipelinechannel--docling_num_threads:
@@ -599,6 +694,18 @@ root:
           name: import-pdfs
   inputDefinitions:
     parameters:
+      docling_chunk_enabled:
+        defaultValue: false
+        isOptional: true
+        parameterType: BOOLEAN
+      docling_chunk_max_tokens:
+        defaultValue: 512.0
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      docling_chunk_merge_peers:
+        defaultValue: true
+        isOptional: true
+        parameterType: BOOLEAN
       docling_image_export_mode:
         defaultValue: embedded
         isOptional: true

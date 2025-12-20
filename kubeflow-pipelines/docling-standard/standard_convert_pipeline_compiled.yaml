@@ -3,6 +3,9 @@
 # Description: Docling standard convert pipeline by the Data Processing Team
 # Inputs:
 #    docling_allow_external_plugins: bool [Default: False]
+#    docling_chunk_enabled: bool [Default: False]
+#    docling_chunk_max_tokens: int [Default: 512.0]
+#    docling_chunk_merge_peers: bool [Default: True]
 #    docling_enrich_code: bool [Default: False]
 #    docling_enrich_formula: bool [Default: False]
 #    docling_enrich_picture_classes: bool [Default: False]
@@ -11,7 +14,7 @@
 #    docling_image_export_mode: str [Default: 'embedded']
 #    docling_num_threads: int [Default: 4.0]
 #    docling_ocr: bool [Default: True]
-#    docling_ocr_engine: str [Default: 'tesseract']
+#    docling_ocr_engine: str [Default: 'easyocr']
 #    docling_pdf_backend: str [Default: 'dlparse_v4']
 #    docling_table_mode: str [Default: 'accurate']
 #    docling_timeout_per_document: int [Default: 300.0]
@@ -20,6 +23,37 @@
 #    pdf_filenames: str [Default: '2203.01017v2.pdf,2206.01062.pdf,2305.03393v1-pg9.pdf,2305.03393v1.pdf,amt_handbook_sample.pdf,code_and_formula.pdf,multi_page.pdf,redp5110_sampled.pdf']
 #    pdf_from_s3: bool [Default: False]
 components:
+  comp-condition-2:
+    dag:
+      tasks:
+        docling-chunk:
+          cachingOptions: {}
+          componentRef:
+            name: comp-docling-chunk
+          inputs:
+            artifacts:
+              input_path:
+                componentInputArtifact: pipelinechannel--docling-convert-standard-output_path
+            parameters:
+              max_tokens:
+                componentInputParameter: pipelinechannel--docling_chunk_max_tokens
+              merge_peers:
+                componentInputParameter: pipelinechannel--docling_chunk_merge_peers
+          taskInfo:
+            name: docling-chunk
+    inputDefinitions:
+      artifacts:
+        pipelinechannel--docling-convert-standard-output_path:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+      parameters:
+        pipelinechannel--docling_chunk_enabled:
+          parameterType: BOOLEAN
+        pipelinechannel--docling_chunk_max_tokens:
+          parameterType: NUMBER_INTEGER
+        pipelinechannel--docling_chunk_merge_peers:
+          parameterType: BOOLEAN
   comp-create-pdf-splits:
     executorLabel: exec-create-pdf-splits
     inputDefinitions:
@@ -37,6 +71,32 @@ components:
       parameters:
         Output:
           parameterType: LIST
+  comp-docling-chunk:
+    executorLabel: exec-docling-chunk
+    inputDefinitions:
+      artifacts:
+        input_path:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+          description: Path to the input directory containing Docling JSON files
+      parameters:
+        max_tokens:
+          defaultValue: 512.0
+          description: Maximum number of tokens per chunk
+          isOptional: true
+          parameterType: NUMBER_INTEGER
+        merge_peers:
+          defaultValue: true
+          description: Whether to merge smaller chunks at the same level
+          isOptional: true
+          parameterType: BOOLEAN
+    outputDefinitions:
+      artifacts:
+        output_path:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
   comp-docling-convert-standard:
     executorLabel: exec-docling-convert-standard
     inputDefinitions:
@@ -98,7 +158,7 @@ components:
           isOptional: true
           parameterType: BOOLEAN
         ocr_engine:
-          defaultValue: tesseract
+          defaultValue: easyocr
           description: Engine to use for OCR.
           isOptional: true
           parameterType: STRING
@@ -149,6 +209,29 @@ components:
   comp-for-loop-1:
     dag:
       tasks:
+        condition-2:
+          componentRef:
+            name: comp-condition-2
+          dependentTasks:
+          - docling-convert-standard
+          inputs:
+            artifacts:
+              pipelinechannel--docling-convert-standard-output_path:
+                taskOutputArtifact:
+                  outputArtifactKey: output_path
+                  producerTask: docling-convert-standard
+            parameters:
+              pipelinechannel--docling_chunk_enabled:
+                componentInputParameter: pipelinechannel--docling_chunk_enabled
+              pipelinechannel--docling_chunk_max_tokens:
+                componentInputParameter: pipelinechannel--docling_chunk_max_tokens
+              pipelinechannel--docling_chunk_merge_peers:
+                componentInputParameter: pipelinechannel--docling_chunk_merge_peers
+          taskInfo:
+            name: condition-2
+          triggerPolicy:
+            condition: inputs.parameter_values['pipelinechannel--docling_chunk_enabled']
+              == true
         docling-convert-standard:
           cachingOptions: {}
           componentRef:
@@ -206,6 +289,12 @@ components:
         pipelinechannel--create-pdf-splits-Output-loop-item:
           parameterType: LIST
         pipelinechannel--docling_allow_external_plugins:
+          parameterType: BOOLEAN
+        pipelinechannel--docling_chunk_enabled:
+          parameterType: BOOLEAN
+        pipelinechannel--docling_chunk_max_tokens:
+          parameterType: NUMBER_INTEGER
+        pipelinechannel--docling_chunk_merge_peers:
           parameterType: BOOLEAN
         pipelinechannel--docling_enrich_code:
           parameterType: BOOLEAN
@@ -327,7 +416,7 @@ deploymentSpec:
           \    image_export_mode: str = \"embedded\",\n    table_mode: str = \"accurate\"\
           ,\n    num_threads: int = 4,\n    timeout_per_document: int = 300,\n   \
           \ ocr: bool = True,\n    force_ocr: bool = False,\n    ocr_engine: str =\
-          \ \"tesseract\",\n    allow_external_plugins: bool = False,\n    enrich_code:\
+          \ \"easyocr\",\n    allow_external_plugins: bool = False,\n    enrich_code:\
           \ bool = False,\n    enrich_formula: bool = False,\n    enrich_picture_classes:\
           \ bool = False,\n    enrich_picture_description: bool = False,\n):\n   \
           \ \"\"\"\n    Convert a list of PDF files to JSON and Markdown using Docling\
@@ -476,9 +565,9 @@ deploymentSpec:
           \n    if pipeline_type == \"standard\":\n        # Standard pipeline: download\
           \ traditional models\n        download_models(\n            output_dir=output_path_p,\n\
           \            progress=True,\n            with_layout=True,\n           \
-          \ with_tableformer=True,\n            with_easyocr=False,\n        )\n \
-          \   elif pipeline_type == \"vlm\" and remote_model_endpoint_enabled:\n \
-          \       # VLM pipeline with remote model endpoint: Download minimal required\
+          \ with_tableformer=True,\n            with_easyocr=True,\n        )\n  \
+          \  elif pipeline_type == \"vlm\" and remote_model_endpoint_enabled:\n  \
+          \      # VLM pipeline with remote model endpoint: Download minimal required\
           \ models\n        # Only models set are what lives in fabianofranz repo\n\
           \        # TODO: figure out what needs to be downloaded or removed\n   \
           \     download_models(\n            output_dir=output_path_p,\n        \
@@ -656,6 +745,12 @@ root:
                 producerTask: create-pdf-splits
             pipelinechannel--docling_allow_external_plugins:
               componentInputParameter: docling_allow_external_plugins
+            pipelinechannel--docling_chunk_enabled:
+              componentInputParameter: docling_chunk_enabled
+            pipelinechannel--docling_chunk_max_tokens:
+              componentInputParameter: docling_chunk_max_tokens
+            pipelinechannel--docling_chunk_merge_peers:
+              componentInputParameter: docling_chunk_merge_peers
             pipelinechannel--docling_enrich_code:
               componentInputParameter: docling_enrich_code
             pipelinechannel--docling_enrich_formula:
@@ -709,6 +804,18 @@ root:
         defaultValue: false
         isOptional: true
         parameterType: BOOLEAN
+      docling_chunk_enabled:
+        defaultValue: false
+        isOptional: true
+        parameterType: BOOLEAN
+      docling_chunk_max_tokens:
+        defaultValue: 512.0
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      docling_chunk_merge_peers:
+        defaultValue: true
+        isOptional: true
+        parameterType: BOOLEAN
       docling_enrich_code:
         defaultValue: false
         isOptional: true
@@ -742,7 +849,7 @@ root:
         isOptional: true
         parameterType: BOOLEAN
       docling_ocr_engine:
-        defaultValue: tesseract
+        defaultValue: easyocr
         isOptional: true
         parameterType: STRING
       docling_pdf_backend:
